@@ -4,7 +4,7 @@
 
 ## 这是什么
 
-DSH-X：DeepSeek Harness（`dsh`）的第三方启动器。`package.json` 的 `name` 是 `dsh-x`——deb 的包名取的就是它，别改回早先那个 `dsh-versions`。它启动的是 dsh 官方原版 Web 界面，自己不重做 dsh 的页面。
+DSH-X：DeepSeek Harness（`dsh`）的第三方启动器。本分支的 `package.json` 是独立发行形态 `@melorise/dsh-x-core-standalone`（命令 `dsh-x`）；上游安装包的 deb 包名 `dsh-x` 由 `scripts/pack.mjs` 里那份外壳 `package.json` 决定。它启动的是 dsh 官方原版 Web 界面，自己不重做 dsh 的页面。
 
 ```
 Windows/macOS 外壳  shell/（Electron）  DSH.exe / DSH-X.app：Chromium 窗口与内部标签页、托盘、菜单栏、单实例；服务跑在同一进程里
@@ -14,7 +14,7 @@ Node 服务  start.js → server.js        管理页后端 + 版本 / 插件 / �
 注入钩子   compat/  perf/              被注入 dsh 进程，修补运行时行为（见下）
 ```
 
-**零第三方运行时依赖**：服务与页面的 import 都是 `node:` 内置或相对路径，没有构建步骤。安装包不依赖用户机器环境：dsh 子进程用 Electron 自带的 Node（打包时只把 npm / pnpm 抄进 `node/`），旧安装包里的 `node/node.exe` 继续兼容。
+**零第三方运行时依赖**：服务与页面的 import 都是 `node:` 内置或相对路径，没有构建步骤。独立包把 `pnpm` 作为依赖安装，供插件命令使用（入口把它追加到 PATH 末尾）。安装包不依赖用户机器环境：dsh 子进程用 Electron 自带的 Node（打包时只把 npm / pnpm 抄进 `node/`），旧安装包里的 `node/node.exe` 继续兼容。
 唯一的例外在**打包期**：三个平台的外壳都要 `electron` 与 `electron-builder`（`devDependencies`，打安装包前先 `npm install`）。`shell/` 之外的代码别 import 它们；`npm start` / `npm test` 不需要装。
 
 ## 怎么跑、怎么验
@@ -23,12 +23,12 @@ Node 服务  start.js → server.js        管理页后端 + 版本 / 插件 / �
 |---|---|
 | `npm start` | 起管理页（开发入口） |
 | `npm run server` | 只起网页服务，不开浏览器 |
+| `node bin/dsh-x.mjs` | 独立包入口（等价于安装后的 `dsh-x`） |
 | `npm test` | 全部用例（`node --test`，300+ 用例，约 16 秒） |
 | `node --test test/packs.test.mjs` | 单个用例文件 |
-| `npm run electron` | 用 Electron 外壳从源码起（Windows / macOS / Linux，先 `npm install`） |
-| `npm run dist` | 打安装包（都先 `npm install`；macOS 还要 Xcode CLT） |
 | `node scripts/make-pack.mjs` | 把 `packs/<名字>/` 打成 `.dspack`（产物在 `release/packs/`） |
 
+- Electron 外壳与安装包构建属于上游代码：本分支不再安装 `electron` / `electron-builder` 这些 devDependencies，`scripts/pack*.mjs` 与 `shell/` 保留原样供合并上游时使用。
 - **跑测试别把输出接管道**（`| head`、`| tail` 会把输出缓冲成 0 字节，等于白跑）；要留证据就重定向到文件。
 - 没有 lint / 格式化配置，**也别加**：风格靠已有代码和这份文档。
 - 用例里有三只"假服务器"（`test/fake-s3.mjs`、`fake-webdav.mjs`、`fake-proxy.mjs`），网络相关改动靠它们离线验证。
@@ -139,6 +139,14 @@ dsh 的环境隔离单位。模板名（web / headless / acp / sdk / …）会�
 - `npm-package/` 是 `@yyh001/dsh-x` CLI 包：`npm i -g @yyh001/dsh-x` 后 `dsh-x` 启动。包里有 `shell/` 和图标（`assets/icon.png`、`tray.ico`、`tray.png`），版本跟 `shell/package.json` 走；依赖 `electron`（版本跟根 `package.json` 的 devDependencies 对齐），核心从 npm 拉跨平台的 `dsh-x-core` 到用户缓存（Windows `%LOCALAPPDATA%\dsh-x`、mac `~/Library/Caches/dsh-x`、Linux `~/.cache/dsh-x`），然后 `spawn(electron, [包根])` 启动外壳，并用 `DSH_CORE_DIR` 指向缓存核心。
 - CLI 设置 `DSH_NPM=1`、`DSH_CORE_DIR` 和 `DSH_ELECTRON_BIN`；核心的 `NPM_MODE` 会关掉安装包/核心自更新，设置页「关于」提示用 `npm update -g @yyh001/dsh-x`。`node/` 包装脚本优先用 `DSH_ELECTRON_BIN`，找不到才回退安装版的 `DSH.exe` / `Contents/MacOS/DSH` / AppImage 根目录的 `DSH`。
 - `scripts/pack-npm.mjs` 打包/发布 CLI（含外壳）；CI 的 `npm-package` job 在三个平台构建后发 `dsh-x`（需要 `NPM_TOKEN` 和 npm 上的包名）。npm 版没有快捷方式、卸载项和开机自启；数据目录与安装版共用。
+
+### 独立 npm 包（本分支的发行形态）
+
+- 包名 `@melorise/dsh-x-core-standalone`，命令 `dsh-x`。`files` 白名单只带核心运行文件与 `public/`、`assets/`、`perf/`、`compat/`、`packs/`；外壳、打包脚本、插件源码不进包。依赖只有 `pnpm`（插件命令要用）。
+- 入口 `bin/dsh-x.mjs`：解析 `--port`、`--no-open`、`--data-dir`、`--dsh-home`，设 `DSH_NPM=1`，把 `<包根>/node_modules/.bin` **追加**到 `PATH` 末尾（用户自己的 pnpm 仍然优先），然后 `import('../start.js')`。端口、日志、单实例唤醒都留在 `start.js`；`DSH_X_NO_OPEN=1` 时它只起服务、不开浏览器。
+- `platform.js` 的 `STANDALONE = NPM_MODE && !IN_ELECTRON`：`webMode` 进设置接口，关于页据此隐藏「外壳版本」行；`openModes` 只列当前可用的项（`window` 需要外壳，`internal` 还需要外壳报告 `DSH_INTERNAL_TABS=1`）。源码运行不设 `DSH_NPM`，行为与上游一致。
+- 更新：`npm-update.js` 查 registry 的 `dist-tags`，先官方后镜像；`/api/self?refresh=1` 返回 `npmUpdate`，关于页显示新版本号与 `npm install -g …@latest`。安装包与核心目录的更新链路在独立版走 `NPM_MODE` 分支，不参与。
+- 分支：`fix/linux-chromium-lookup` 只含 Linux 上按 PATH 查找 Chromium 的修复，用于给上游提 PR；`standalone` 以它为父提交。同步上游用 `git merge upstream/main`，冲突面是 `package.json`、`server.js`、`public/index.html` 与 `scripts/pack-common.mjs`（`npm-update.js` 一行）。
 
 ### 打包与安装布局
 

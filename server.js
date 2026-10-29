@@ -128,7 +128,8 @@ import {
 import { netFetch, proxyEnv, resetProxyCache, resolveProxy } from './proxy.js'
 import { APP_DIR, fileManager } from './filemanager.js'
 import { checkCoreUpdate, downloadCoreTarball, extractCoreTarball, stagingExists, stagingStats } from './core-npm.js'
-import { IN_ELECTRON, IS_LINUX, IS_MAC, IS_WINDOWS, LAUNCHER_NAME, MAC_APP_NAME, NPM_MODE, PACKAGED, RUNTIME_NODE, RUNTIME_NODE_ENV } from './platform.js'
+import { IN_ELECTRON, IS_LINUX, IS_MAC, IS_WINDOWS, LAUNCHER_NAME, MAC_APP_NAME, NPM_MODE, PACKAGED, RUNTIME_NODE, RUNTIME_NODE_ENV, STANDALONE } from './platform.js'
+import { checkStandaloneUpdate } from './npm-update.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -1289,12 +1290,16 @@ async function publicSettings() {
     // 选了独立桌面窗口但当前没有原生外壳（源码运行）时，页面要如实说明会落到标签页
     openModeWindow: openRoute(OPEN_MODE, shellWindowHost()) === 'window',
     openModeInternal: internalTabsHost(),
+    // 下拉只列当前摆得出来的方式：独立包与源码运行没有外壳，window / internal 选了也
+    // 只会落到浏览器，留在列表里只会让人以为它生效了
     openModes: [
       { id: 'tab', label: '浏览器标签页' },
       { id: 'app', label: '浏览器独立窗口' },
-      { id: 'window', label: '独立桌面窗口' },
-      { id: 'internal', label: 'DSH-X 内部标签页' },
+      ...(shellWindowHost() ? [{ id: 'window', label: '独立桌面窗口' }] : []),
+      ...(internalTabsHost() ? [{ id: 'internal', label: 'DSH-X 内部标签页' }] : []),
     ],
+    // 没有原生外壳：关于页不显示外壳版本，更新检查走 npm
+    webMode: STANDALONE,
     systemPath: SYSTEM_PATH,
     systemBinDir: systemBinDir(),
     systemPathMode: IS_WINDOWS ? 'automatic' : 'manual',
@@ -5502,7 +5507,9 @@ async function handleApi(req, res, url) {
     const info = await checkSelfUpdate({ force: refresh })
     // staged / downloading 让页面重载后也能知道下载进度：下载在服务端跑，和弹窗开不开无关
     const app = await checkAppUpdate({ force: refresh }).catch((error) => ({ available: false, reason: 'error', error: error?.message || String(error) }))
-    send(res, 200, { ...info, npm: NPM_MODE, shell: host.shellUpdate?.state() || null, staged: stagedUpdate?.latest || '', downloading: selfDownloadInFlight, app, appStaged: stagedApp?.version || '' })
+    // 独立版的更新只发生在 npm 上；只在使用者点「检查更新」时查 registry，页面每次加载都查会白跑一趟
+    const npmUpdate = STANDALONE && refresh ? await checkStandaloneUpdate({ current: APP_VERSION }).catch((error) => ({ current: APP_VERSION, latest: '', update: false, error: error?.message || String(error) })) : null
+    send(res, 200, { ...info, npm: NPM_MODE, npmUpdate, shell: host.shellUpdate?.state() || null, staged: stagedUpdate?.latest || '', downloading: selfDownloadInFlight, app, appStaged: stagedApp?.version || '' })
     return
   }
   if (req.method === 'GET' && url.pathname === '/api/shell-update') {

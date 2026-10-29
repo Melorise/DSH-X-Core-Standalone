@@ -465,7 +465,7 @@
                     <button class="ghost" id="aboutCheckUpdate" type="button" data-i18n="检查更新">检查更新</button>
                   </div>
                 </div>
-                <div class="set-row">
+                <div class="set-row" id="aboutShellRow">
                   <div class="set-text">
                     <span class="set-name" data-i18n="外壳版本">外壳版本</span>
                     <span class="set-desc" id="aboutShellVersion">-</span>
@@ -1404,7 +1404,7 @@
   "正在检查…": "Checking…",
   "发现新版本 {latest}，正在打开更新窗口…": "Version {latest} is available. Opening the update dialog…",
   "检查更新失败：{message}": "Update check failed: {message}",
-  "npm 安装的版本请用 npm update -g @yyh001/dsh-x 更新。": "This npm-installed copy updates with npm update -g @yyh001/dsh-x.",
+  "发现新版本 {latest}。在终端执行 {command} 更新。": "Version {latest} is available. Run {command} in a terminal to update.",
   "核心已是最新。这个安装形态（deb / macOS）不支持外壳自更新，换外壳请到发布页下载新的安装包。": "The core is up to date. This install (deb / macOS) cannot self-update the shell; download the new installer from the releases page.",
   "DSH-X 外壳": "DSH-X shell",
   "更新外壳到 {latest}": "Update the shell to {latest}",
@@ -5727,7 +5727,12 @@
             aboutUpdateHintEl.textContent = t('发现外壳新版本 {latest}，正在打开更新窗口…', { latest: shellState.latest || '' })
             showAsk({ dsh: null, shell: shellState, self: coreReady ? { current: data.current, latest: data.app?.latest, url: data.url } : null })
           } else if (data.npm) {
-            aboutUpdateHintEl.textContent = t('npm 安装的版本请用 npm update -g @yyh001/dsh-x 更新。')
+            const npm = data.npmUpdate || null
+            aboutUpdateHintEl.textContent = npm?.error
+              ? t('检查更新失败：{message}', { message: npm.error })
+              : npm?.update
+                ? t('发现新版本 {latest}。在终端执行 {command} 更新。', { latest: npm.latest || '', command: npm.command || '' })
+                : t('已是最新版本（{version}）。', { version: data.current || '' })
           } else if (coreReady) {
             aboutUpdateHintEl.textContent = t('发现新版本 {latest}，正在打开更新窗口…', { latest: data.app?.latest || data.latest })
             showAsk({ dsh: null, self: { current: data.current, latest: data.app?.latest || data.latest, url: data.url } })
@@ -6299,13 +6304,20 @@
           ? data.openModes
           : [{ id: 'tab', label: '浏览器标签页' }, { id: 'app', label: '浏览器独立窗口' }, { id: 'window', label: '独立桌面窗口' }, { id: 'internal', label: 'DSH-X 内部标签页' }]
         openModeEl.innerHTML = modes.map((item) => `<option value="${escapeHtml(item.id)}" data-i18n="${escapeHtml(item.label)}">${escapeHtml(t(item.label))}</option>`).join('')
-        openModeEl.value = String(data.openMode || 'internal')
+        // 保存的值可能是当前形态用不了的（没有外壳时的 window / internal）：下拉退回标签页
+        const saved = String(data.openMode || 'tab')
+        openModeEl.value = modes.some((item) => item.id === saved) ? saved : 'tab'
         // 选了桌面窗口但当前没有原生外壳（源码运行 / npm start）：如实说明会落到哪里
         openModeHint.textContent = openModeEl.value === 'internal' && data.openModeInternal === false
           ? t('内部标签页需使用新版 DSH-X 桌面端；当前使用浏览器标签页。')
           : openModeEl.value === 'window' && data.openModeWindow === false
           ? t('当前预览使用浏览器标签页。')
           : describeOpenMode(openModeEl.value)
+      }
+      // 没有原生外壳（独立包 / 源码运行）：关于页的外壳版本行没有可显示的内容
+      if ('webMode' in data) {
+        const shellRow = document.getElementById('aboutShellRow')
+        if (shellRow) shellRow.hidden = data.webMode === true
       }
       if ('proxyMode' in data || 'proxyUrl' in data) {
         const list = Array.isArray(data.proxyModes) && data.proxyModes.length

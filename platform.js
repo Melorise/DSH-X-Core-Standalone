@@ -30,6 +30,13 @@ export const PACKAGED = (IN_ELECTRON && !process.defaultApp) || process.env.DSH_
 export const NPM_MODE = process.env.DSH_NPM === '1'
 
 /**
+ * 没有原生外壳的 npm 形态：独立包（dsh-x）用普通 Node 起服务，外壳与安装包都不在。
+ * 打开方式、外壳版本这些依赖外壳的能力，页面据此收起。
+ * 上游的源码运行（`npm start`）不设 DSH_NPM，仍按原有行为处理。
+ */
+export const STANDALONE = NPM_MODE && !IN_ELECTRON
+
+/**
  * 拉子进程（dsh、npm、pnpm）用的 node。
  *
  * 普通情况下就是正在跑的这个 node（源码运行 = 系统 node）。Electron 外壳里没有单独的 node
