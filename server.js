@@ -5107,6 +5107,10 @@ function assertLocalUrl(target) {
  * Chromium 系浏览器（支持 --app= 应用窗口）的常见安装位置。
  * 顺序即优先级：先用户的 Chrome，再 Edge（Windows 自带，兜底最稳）。
  * DSH_CHROMIUM 可以指定一个，方便用便携版或专门指定某个浏览器。
+ *
+ * Linux 这边给的是命令名：发行版各自起名（Debian 的 google-chrome-stable、Ubuntu 的
+ * chromium-browser），安装路径也各不相同，只能交给 PATH 找。snap 与 Flatpak 的导出文件
+ * 不保证在 PATH 里，按固定位置直接列出来。
  */
 export function chromiumCandidates(env = process.env, platform = process.platform) {
   if (env.DSH_CHROMIUM) return [env.DSH_CHROMIUM]
@@ -5117,7 +5121,20 @@ export function chromiumCandidates(env = process.env, platform = process.platfor
       '/Applications/Chromium.app/Contents/MacOS/Chromium',
     ]
   }
-  if (platform !== 'win32') return ['google-chrome', 'chromium', 'microsoft-edge']
+  if (platform !== 'win32') {
+    const home = String(env.HOME || '').trim()
+    const flatpakRoots = home
+      ? ['/var/lib/flatpak/exports/bin', join(home, '.local/share/flatpak/exports/bin')]
+      : ['/var/lib/flatpak/exports/bin']
+    return [
+      'google-chrome', 'google-chrome-stable',
+      'chromium', 'chromium-browser',
+      'microsoft-edge', 'microsoft-edge-stable',
+      '/snap/bin/chromium',
+      ...flatpakRoots.flatMap((dir) => ['com.google.Chrome', 'org.chromium.Chromium', 'com.microsoft.Edge']
+        .map((app) => join(dir, app))),
+    ]
+  }
   return [
     join(env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
     join(env.ProgramFiles || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
@@ -5127,9 +5144,33 @@ export function chromiumCandidates(env = process.env, platform = process.platfor
   ].filter(Boolean)
 }
 
-/** 找到可用的 Chromium 就返回它的路径，否则空串（调用方退回默认浏览器）。 */
+/** PATH 里按命令名找可执行文件；找不到返回空串。 */
+function findInPath(name, env) {
+  for (const dir of String(env.PATH || '').split(delimiter).filter(Boolean)) {
+    const file = join(dir, name)
+    if (existsSync(file)) return file
+  }
+  return ''
+}
+
+/**
+ * 找到可用的 Chromium 就返回它的绝对路径，否则空串（调用方退回默认浏览器）。
+ *
+ * 裸命令名要走 PATH 展开：Linux 的候选就是命令名，`existsSync` 拿它判存在会按当前工作
+ * 目录拼相对路径，`execFile` 拿裸名字也只会在工作目录里找——和用户在终端里敲命令的
+ * 行为不一致，于是「浏览器独立窗口」在 Linux 上永远静默退回标签页。
+ */
 export function findChromiumBrowser(env = process.env, platform = process.platform) {
-  return chromiumCandidates(env, platform).find((file) => Boolean(file) && existsSync(file)) || ''
+  for (const file of chromiumCandidates(env, platform)) {
+    if (!file) continue
+    if (isAbsolute(file)) {
+      if (existsSync(file)) return file
+      continue
+    }
+    const found = findInPath(file, env)
+    if (found) return found
+  }
+  return ''
 }
 
 /** 应用窗口的参数：--app=<url> 打开的是没有地址栏、没有标签栏的独立窗口。 */

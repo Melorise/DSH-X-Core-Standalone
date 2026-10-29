@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 
@@ -49,6 +49,29 @@ test('DSH_CHROMIUM 指到真实文件就被采用', () => {
   const fake = join(dir, 'chrome.exe')
   writeFileSync(fake, '')
   assert.equal(findChromiumBrowser({ DSH_CHROMIUM: fake }, 'win32'), fake)
+})
+
+test('Linux：候选是命令名，命中时返回 PATH 上的绝对路径', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-chromium-linux-'))
+  const fake = join(dir, 'google-chrome')
+  writeFileSync(fake, '')
+  // 裸命令名按 PATH 展开：调用方要拿它去 execFile，相对路径只会在工作目录里找
+  assert.equal(findChromiumBrowser({ PATH: dir }, 'linux'), fake)
+})
+
+test('Linux：多个 PATH 目录都有时按 PATH 顺序取第一个', () => {
+  const first = mkdtempSync(join(tmpdir(), 'dsh-chromium-first-'))
+  const second = mkdtempSync(join(tmpdir(), 'dsh-chromium-second-'))
+  writeFileSync(join(first, 'chromium'), '')
+  writeFileSync(join(second, 'chromium'), '')
+  assert.equal(findChromiumBrowser({ PATH: [first, second].join(delimiter) }, 'linux'), join(first, 'chromium'))
+})
+
+test('Linux：snap 与 Flatpak 的导出位置也在候选里', () => {
+  const list = chromiumCandidates({ HOME: '/home/a' }, 'linux')
+  assert.ok(list.includes('/snap/bin/chromium'), 'snap 的 chromium 不在 PATH 的常见目录里')
+  assert.ok(list.includes('/var/lib/flatpak/exports/bin/com.google.Chrome'), '系统级 Flatpak')
+  assert.ok(list.includes('/home/a/.local/share/flatpak/exports/bin/com.google.Chrome'), '用户级 Flatpak')
 })
 
 test('桌面窗口模式只在原生外壳托管时成立', () => {
