@@ -15,6 +15,8 @@ const MANAGER_URL = `http://127.0.0.1:${PORT}/`
 // 由原生外壳（DSH.exe / DSH-X.app）拉起时它设这个变量：管理页装进它自己的窗口，托盘也归它，
 // 这里就只剩服务本身，不用再往系统浏览器里开页面。
 const APP_WINDOW = process.env.DSH_APP_WINDOW === '1'
+// 独立版入口的 --no-open：服务照起，浏览器由使用者自己开（远程登录、只想要后台时用）。
+const NO_OPEN = process.env.DSH_X_NO_OPEN === '1'
 const LOG_DIR = APP_DIR
 const LOG = join(LOG_DIR, 'manager.log')
 
@@ -32,6 +34,7 @@ function log(...args) {
  * 这里只负责把失败写进日志——启动流程不该因为"浏览器没打开"而中断。
  */
 function openPage(target = MANAGER_URL) {
+  if (NO_OPEN) return
   void fileManager.openUrl(target).catch((error) => log(`打开地址失败，已跳过：${target}（${error?.message || error}）`))
 }
 

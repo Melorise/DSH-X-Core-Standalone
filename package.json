@@ -1,24 +1,77 @@
 {
-  "name": "dsh-x",
+  "name": "@melorise/dsh-x-core-standalone",
   "productName": "DSH",
   "version": "0.1.22",
-  "private": true,
+  "private": false,
   "type": "module",
-  "description": "DeepSeek Harness 桌面启动器：启动项与多实例，版本、插件、整合包、MCP 和技能管理。",
-  "main": "start.js",
+  "description": "DSH-X 核心的独立 npm 版：不起 Electron 外壳，执行 dsh-x 直接开本地管理页。",
+  "main": "server.js",
+  "bin": {
+    "dsh-x": "bin/dsh-x.mjs"
+  },
   "engines": {
     "node": ">=22.18.0"
   },
   "scripts": {
     "start": "node start.js",
     "server": "node server.js",
-    "electron": "electron shell/main.mjs",
-    "test": "node --test",
-    "dist": "node scripts/pack.mjs",
-    "release:manifest": "node scripts/release-manifest.mjs make",
-    "release:sbom": "node scripts/release-sbom.mjs",
-    "release:verify": "node scripts/release-manifest.mjs verify",
-    "release:check": "node scripts/release-manifest.mjs check-tag"
+    "test": "node --test"
+  },
+  "files": [
+    "bin",
+    "start.js",
+    "server.js",
+    "startup-diagnosis.js",
+    "runtime-diagnostics.mjs",
+    "repair-plan.js",
+    "diagnostic-repair.js",
+    "repair-actions.js",
+    "repair-probe.mjs",
+    "optional-analytics-proof.js",
+    "repair-evidence.js",
+    "repair-dependencies.js",
+    "repair-uninstall.mjs",
+    "configuration-evidence.js",
+    "diagnostic-command-error.js",
+    "log-writer.js",
+    "registry.js",
+    "settings.js",
+    "proxy.js",
+    "platform.js",
+    "filemanager.js",
+    "filemanager-base.js",
+    "filemanager-windows.js",
+    "filemanager-mac.js",
+    "filemanager-linux.js",
+    "plugins.js",
+    "recovery.js",
+    "packs.js",
+    "pack-market.js",
+    "zip.js",
+    "mcp.js",
+    "skills.js",
+    "sync.js",
+    "version.js",
+    "zipfile.js",
+    "core-npm.js",
+    "npm-update.js",
+    "apply-update.mjs",
+    "plugin-tool.js",
+    "reserved-profile-boot.mjs",
+    "stdio-unblock.cjs",
+    "public",
+    "assets",
+    "perf",
+    "compat",
+    "packs",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "pnpm": "11.27.1"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "author": "yyh",
   "license": "MIT",
@@ -26,20 +79,13 @@
     "type": "git",
     "url": "git+https://github.com/yyh-001/DSH-X.git"
   },
-  "homepage": "https://yyh-001.github.io/DSH-X/",
+  "homepage": "https://github.com/yyh-001/DSH-X#readme",
   "bugs": {
     "url": "https://github.com/yyh-001/DSH-X/issues"
   },
   "keywords": [
     "dsh",
     "deepseek-harness",
-    "launcher",
-    "electron"
-  ],
-  "devDependencies": {
-    "@electron/packager": "20.3.0",
-    "electron": "44.7.0",
-    "electron-builder": "^26.18.0",
-    "electron-updater": "^6.8.11"
-  }
+    "launcher"
+  ]
 }

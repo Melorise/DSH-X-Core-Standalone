@@ -52,6 +52,7 @@ const APP_FILES = [
   'version.js',
   'zipfile.js',
   'core-npm.js',
+  'npm-update.js',
   'apply-update.mjs',
   'plugin-tool.js',
   'reserved-profile-boot.mjs',
