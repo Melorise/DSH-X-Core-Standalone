@@ -1,7 +1,7 @@
 {
   "name": "@melorise/dsh-x-core-standalone",
   "productName": "DSH",
-  "version": "0.1.22",
+  "version": "0.1.22.1",
   "private": false,
   "type": "module",
   "description": "DSH-X 核心的独立 npm 版：不起 Electron 外壳，执行 dsh-x 直接开本地管理页。",
@@ -73,15 +73,16 @@
   "publishConfig": {
     "access": "public"
   },
-  "author": "yyh",
+  "author": "Melorise",
+  "contributors": ["yyh", "Melorise"],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yyh-001/DSH-X.git"
+    "url": "git+https://github.com/Melorise/DSH-X"
   },
-  "homepage": "https://github.com/yyh-001/DSH-X#readme",
+  "homepage": "https://github.com/Melorise/DSH-X#readme",
   "bugs": {
-    "url": "https://github.com/yyh-001/DSH-X/issues"
+    "url": "https://github.com/Melorise/DSH-X/issues"
   },
   "keywords": [
     "dsh",
